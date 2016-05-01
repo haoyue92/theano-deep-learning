@@ -5,7 +5,6 @@ from theano import tensor as T
 from theano.tensor.nnet.conv import conv2d
 from theano.tensor.signal.downsample import max_pool_2d
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
-import glob
 
 
 sng = RandomStreams(23455)
@@ -41,21 +40,21 @@ def gray(x):
 
 
 def cifar10(dtype='float64', grayscale=True):
-    x_train = []
-    t_train = []
+    data_train = []
+    label_train = []
     for k in xrange(5):
         x, t = load_batch_cifar10("data_batch_%d" %(k+1), dtype=dtype)
-        x_train.append(x)
-        t_train.append(t)
-    x_train = np.concatenate(x_train, axis=0)
-    t_train = np.concatenate(t_train, axis=0)
-    x_test, t_test = load_batch_cifar10("test_batch", dtype=dtype)
+        data_train.append(x)
+        label_train.append(t)
+    data_train = np.concatenate(x_train, axis=0)
+    label_train = np.concatenate(t_train, axis=0)
+    data_test, label_test = load_batch_cifar10("test_batch", dtype=dtype)
 
     if grayscale:
-        x_train = gray(x_train)
-        x_test = gray(x_test)
+        data_train = gray(data_train)
+        data_test = gray(data_test)
 
-    return x_train, x_test, t_train, t_test
+    return data_train, data_test, label_train, label_test
 
 def floatX(x):
     return np.asarray(x, dtype=theano.config.floatX)
@@ -83,7 +82,7 @@ def model(x, w1, b1, w2, b2, w3, b3, w, b):
     predict_y = T.nnet.softmax(T.dot(h3, w) + b)
     return predict_y
 
-w1 = init_weights((4, 3, 3, 3))
+w1 = init_weights((4, 1, 3, 3))
 b1 = init_weights((4,))
 w2 = init_weights((8, 4, 3, 3))
 b2 = init_weights((8,))
@@ -94,8 +93,8 @@ b = init_weights((10,))
 
 params = [w1, b1, w2, b2, w3, b3, w, b]
 
-x_train, x_test, t_train, t_test = cifar10(dtype=theano.config.floatX, grayscale=False)
-labels_test = np.argmax(t_test, axis=1)
+data_train, data_test, label_train, label_test = cifar10(dtype=theano.config.floatX, grayscale=False)
+labels_test = np.argmax(label_test, axis=1)
 
 predict_y = model(x, *params)
 y = T.argmax(predict_y, axis=1)
@@ -110,13 +109,13 @@ predict = theano.function([x], y)
 batch_size = 50
 
 for i in range(5):
-    print "iteration %d" %(i+1)
-    for start in range(0, len(x_train), batch_size):
-        x_batch = x_train[start:start + batch_size]
-        t_batch = t_train[start:start + batch_size]
-        cost = train(x_batch, t_batch)
+    print("iteration %d" %(i+1))
+    for start in range(0, len(data_train), batch_size):
+        data_batch = data_train[start:start + batch_size]
+        label_batch = label_train[start:start + batch_size]
+        cost = train(data_batch, label_batch)
 
-    predict_test = predict(x_test)
+    predict_test = predict(data_test)
     accuracy = np.mean(predict_test == labels_test)
-    print "accuracy: %.5f" % accuracy
-    print
+    print("accuracy: %.5f" % accuracy)
+    print()
